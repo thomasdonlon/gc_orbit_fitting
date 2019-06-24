@@ -34,7 +34,7 @@ def plane_OLS(x,y,z):
 
 #x, y, z should be numpy arrays
 #takes in galactocentric x, y, z data and outputs parameters for the best fit plane to those points incident the galactic center
-def plane_OLS(x,y,z):
+def plane_OLS(x,y,z, print_distances=False):
     """ Solves for the best-fit plane to a set of x,y,z data using ordinaryleast-squares.
         Equation is of form z = Ax + By.
         DIFFERENT FROM NEWBY TOOLS plane_OLS() IN THAT WE CONSTRAIN THE PLANE THROUGH GALACTIC CENTER
@@ -48,8 +48,9 @@ def plane_OLS(x,y,z):
     bottom = np.sqrt(params[0]*params[0] + params[1]*params[1] + params[2]*params[2])
     for i in range(len(params)):  params[i] = params[i]/bottom
     print("# - Normalized best-fit plane parameters: {0}".format(params))
-    for i in range(len(x)):
-        print(plane_dist(x[i], y[i], z[i], params))
+    if print_distances:
+        for i in range(len(x)):
+            print(plane_dist(x[i], y[i], z[i], params))
     return params
 
 #borrowed from NewbyTools
@@ -91,7 +92,9 @@ def gal2plane(x,y,z, normal=(0,0,0), point=(1,0,0)):
     #define new axes along the plane
     z_plane = np.array(normal)
     y_plane = np.cross(z_plane, np.array(point))
+    y_plane = y_plane / (y_plane[0]**2 + y_plane[1]**2 + y_plane[2]**2)**0.5 #normalize y_plane vector to prevent skewing
     x_plane = np.cross(y_plane, z_plane)
+    x_plane = x_plane / (x_plane[0]**2 + x_plane[1]**2 + x_plane[2]**2)**0.5 #normalize x_plane vector to prevent skewing
 
     #get new x, y, z through change of basis
     xyz = np.array([x, y, z])

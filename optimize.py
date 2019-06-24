@@ -12,12 +12,16 @@ from galpy.potential import LogarithmicHaloPotential
 from galpy.potential import MiyamotoNagaiPotential
 import matplotlib.pyplot as plt
 from galpy.orbit import Orbit
+from astropy.coordinates import SkyCoord
+import galpy
 
 '''
 ==============================
 PARAMETERS FOR OPTIMIZATION
 ==============================
 '''
+verbose = False #whether or not to print warnings
+
 t_length = 0.3 #Gyr
 resolution = 1000
 ts = np.linspace(0, t_length, num=resolution)*u.Gyr
@@ -112,8 +116,9 @@ def getBoundsSegmentWithVal(val, Lam, split_ind):
             return split_ind[i]+1, split_ind[i+1]+1
         i += 1
 
-    print('WARNING: Could not find a segment including a data point')
-    print('(error: getBoundsSegmentWithVal)')
+    if verbose:
+        print('WARNING: Could not find a segment including a data point')
+        print('(error: getBoundsSegmentWithVal)')
     return split_ind[0], split_ind[len(split_ind) - 1]
 
 #getSegmentBounds: float, np.array([]) -> int int
@@ -196,9 +201,10 @@ def getModelFromOrbit(data, o, normal, point):
     o_rev = o.flip()
     o_rev.integrate(ts, pot)
 
-    data_orbit = Data(np.array(o.ll(ts)), np.array(o.bb(ts)), np.array(o.dist(ts)), np.array(o.vx(ts, obs=[8., 0., 0., 0., 0., 0.])), np.array(o.vy(ts, obs=[8., 0., 0., 0., 0., 0.])), np.array(o.vz(ts, obs=[8., 0., 0., 0., 0., 0.])), np.array([]), np.array([]), np.array([]), np.array([]))
+    #sign swap on vx because galpy is left-handed, and we are inputting data in a right-handed coordinate system
+    data_orbit = Data(np.array(o.ll(ts)), np.array(o.bb(ts)), np.array(o.dist(ts)), np.array(o.vx(ts, obs=[8., 0., 0., 0., 0., 0.]))*-1, np.array(o.vy(ts, obs=[8., 0., 0., 0., 0., 0.])), np.array(o.vz(ts, obs=[8., 0., 0., 0., 0., 0.])), np.array([]), np.array([]), np.array([]), np.array([]))
     data_orbit = data_orbit.LamBet(normal, point) #...
-    data_orbit_rev = Data(np.array(o_rev.ll(ts)), np.array(o_rev.bb(ts)), np.array(o_rev.dist(ts)), np.array(o_rev.vx(ts, obs=[8., 0., 0., 0., 0., 0.]))*-1, np.array(o_rev.vy(ts, obs=[8., 0., 0., 0., 0., 0.]))*-1, np.array(o_rev.vz(ts, obs=[8., 0., 0., 0., 0., 0.]))*-1, np.array([]), np.array([]), np.array([]), np.array([]))
+    data_orbit_rev = Data(np.array(o_rev.ll(ts)), np.array(o_rev.bb(ts)), np.array(o_rev.dist(ts)), np.array(o_rev.vx(ts, obs=[8., 0., 0., 0., 0., 0.])), np.array(o_rev.vy(ts, obs=[8., 0., 0., 0., 0., 0.]))*-1, np.array(o_rev.vz(ts, obs=[8., 0., 0., 0., 0., 0.]))*-1, np.array([]), np.array([]), np.array([]), np.array([]))
     data_orbit_rev = data_orbit_rev.LamBet(normal, point) #...
 
     #grab full lists so that we can select the closest points once we get a list
@@ -278,9 +284,10 @@ def testGC(data):
     print('x2 = ' + str(x2))
 
     #turn the orbit into Lambda/Beta Frame
-    data_orbit = Data(np.array(o.ll(ts)), np.array(o.bb(ts)), np.array(o.dist(ts)), np.array(o.vx(ts, obs=[8., 0., 0., 0., 0., 0.])), np.array(o.vy(ts, obs=[8., 0., 0., 0., 0., 0.])), np.array(o.vz(ts, obs=[8., 0., 0., 0., 0., 0.])), np.array([]), np.array([]), np.array([]), np.array([]))
+    #sign swap on vx because galpy is left-handed, and we are inputting data in a right-handed coordinate system
+    data_orbit = Data(np.array(o.ll(ts)), np.array(o.bb(ts)), np.array(o.dist(ts)), np.array(o.vx(ts, obs=[8., 0., 0., 0., 0., 0.]))*-1, np.array(o.vy(ts, obs=[8., 0., 0., 0., 0., 0.])), np.array(o.vz(ts, obs=[8., 0., 0., 0., 0., 0.])), np.array([]), np.array([]), np.array([]), np.array([]))
     data_orbit = data_orbit.LamBet(normal, point) #...
-    data_orbit_rev = Data(np.array(o_rev.ll(ts)), np.array(o_rev.bb(ts)), np.array(o_rev.dist(ts)), np.array(o_rev.vx(ts, obs=[8., 0., 0., 0., 0., 0.]))*-1, np.array(o_rev.vy(ts, obs=[8., 0., 0., 0., 0., 0.]))*-1, np.array(o_rev.vz(ts, obs=[8., 0., 0., 0., 0., 0.]))*-1, np.array([]), np.array([]), np.array([]), np.array([]))
+    data_orbit_rev = Data(np.array(o_rev.ll(ts)), np.array(o_rev.bb(ts)), np.array(o_rev.dist(ts)), np.array(o_rev.vx(ts, obs=[8., 0., 0., 0., 0., 0.])), np.array(o_rev.vy(ts, obs=[8., 0., 0., 0., 0., 0.]))*-1, np.array(o_rev.vz(ts, obs=[8., 0., 0., 0., 0., 0.]))*-1, np.array([]), np.array([]), np.array([]), np.array([]))
     data_orbit_rev = data_orbit_rev.LamBet(normal, point) #...
 
     fig = plt.figure(figsize=(18, 12))
@@ -326,6 +333,7 @@ def testGC(data):
 INPUTS
 ==============================
 '''
+#guess_params = [275, 65, 6, 0, 0, 0] #l, b, dist (helio), U, V, W, group d
 guess_params = [293.98, 59.98, 14.57, -44.06, -63.30, 144.96] #l, b, dist (helio), U, V, W, perp stream
 #guess_params = [300, 67.92, 12.45, 75, 100, 200] #cocytos
 
@@ -353,14 +361,34 @@ for line in f:
     if star['source'] != 'sdss_lb_300_55' and star['source'] != 'sdss_lb_288_62':
         list_of_stars[line[0]] = star
 
+    star['x'] = star['dist'] * np.cos(star['l'] * np.pi/180) * np.cos(star['b'] * np.pi/180) - 8
+    star['y'] = star['dist'] * np.sin(star['l'] * np.pi/180) * np.cos(star['b'] * np.pi/180)
+    star['z'] = star['dist'] * np.sin(star['b'] * np.pi/180)
+
+    star['drdt'] = (star['x']*star['U'] + star['y']*star['V'] + star['z']*star['W'])/((star['x']**2 + star['y']**2 + star['z']**2)**0.5)
+    star['rot_spd'] = (star['x']*star['V'] - star['y']*star['U'])/(star['x']**2 + star['y']**2)**0.5
+    star['r_vel'] = (star['U']**2 + star['V']**2 + star['W']**2)**0.5
+
+    star['lx'] = star['y'] * star['W'] - star['z'] * star['V']
+    star['ly'] = star['x'] * star['W'] - star['z'] * star['U']
+    star['lz'] = star['x'] * star['V'] - star['y'] * star['U']
+    star['lperp'] = (star['lx']**2 + star['ly']**2)**0.5
+    star['L'] = (star['lx']**2 + star['ly']**2 + star['lz']**2)**0.5
+
+    PE = galpy.potential.evaluatePotentials(pot, (star['x']**2 + star['y']**2)**0.5 * u.kpc, star['z']*u.kpc, ro=8.*u.kpc, vo=220.*u.km/u.s)
+    KE = 0.5*(star['U']**2 + star['V']**2 + star['W']**2)
+    star['energy'] = PE + KE
+
 #need list of id's that are in accepted groups (these are all the stars in groups a, b, d, f, and h that we determined were significant)
 id_list = [3600853752939394816, 3698509244686084608, 3694689339428967552, 3696636437082881280, 3693851167971369600, 3696347712201213568, 3696397774340083840, 3697194061277159168, 3695996796192922752,
 3601648424967929344, 3598360094928086528, 3597997015572148736, 3698057418423030656, 3702875134777825408, 3689603410955212544, 3694242181793912832, 3693284507166557952, 3688698130633240832, 3711384358344137600,
 3799382220989581696, 3597170492066667776, 3681313986635168512, 3689637358376778752, 3697745260199152512, 3682043993636579712, 3702672648544372352, 3688562413961811456,
 3797093488752748032, 3813285962135198336, 3891787828184023168, 3695934570706802944]
 
+n_test = 0
+
 #data_temp = [list_of_stars[x] for x in list_of_stars if (list_of_stars[x]['source'] == 'duffau_group_a' or list_of_stars[x]['source'] == 'duffau_group_b') and list_of_stars[x]['id'] in id_list]
-data_temp = [list_of_stars[x] for x in list_of_stars if list_of_stars[x]['source'] == 'duffau_group_d' and list_of_stars[x]['id'] in id_list]
+data_temp = [list_of_stars[x] for x in list_of_stars if (list_of_stars[x]['source'] == 'duffau_group_f' or list_of_stars[x]['source'] == 'duffau_group_h' or list_of_stars[x]['source'] == 'duffau_group_a' or list_of_stars[x]['source'] == 'duffau_group_b') and list_of_stars[x]['id'] in id_list and list_of_stars[x]['lx'] > -1000]
 
 l = []
 b = []
@@ -433,9 +461,10 @@ def optimize(data_opt):
     o_rev.integrate(ts, pot) #integrate the orbit
 
     #turn the orbit into Lambda/Beta Frame
-    data_orbit = Data(np.array(o.ll(ts)), np.array(o.bb(ts)), np.array(o.dist(ts)), np.array(o.vx(ts, obs=[8., 0., 0., 0., 0., 0.])), np.array(o.vy(ts, obs=[8., 0., 0., 0., 0., 0.])), np.array(o.vz(ts, obs=[8., 0., 0., 0., 0., 0.])), np.array([]), np.array([]), np.array([]), np.array([]))
+    #sign swap on vx because galpy is left-handed, and we are inputting data in a right-handed coordinate system
+    data_orbit = Data(np.array(o.ll(ts)), np.array(o.bb(ts)), np.array(o.dist(ts)), np.array(o.vx(ts, obs=[8., 0., 0., 0., 0., 0.]))*-1, np.array(o.vy(ts, obs=[8., 0., 0., 0., 0., 0.])), np.array(o.vz(ts, obs=[8., 0., 0., 0., 0., 0.])), np.array([]), np.array([]), np.array([]), np.array([]))
     data_orbit = data_orbit.LamBet(normal, point) #...
-    data_orbit_rev = Data(np.array(o_rev.ll(ts)), np.array(o_rev.bb(ts)), np.array(o_rev.dist(ts)), np.array(o_rev.vx(ts, obs=[8., 0., 0., 0., 0., 0.])), np.array(o_rev.vy(ts, obs=[8., 0., 0., 0., 0., 0.])), np.array(o_rev.vz(ts, obs=[8., 0., 0., 0., 0., 0.])), np.array([]), np.array([]), np.array([]), np.array([]))
+    data_orbit_rev = Data(np.array(o_rev.ll(ts)), np.array(o_rev.bb(ts)), np.array(o_rev.dist(ts)), np.array(o_rev.vx(ts, obs=[8., 0., 0., 0., 0., 0.]))*-1, np.array(o_rev.vy(ts, obs=[8., 0., 0., 0., 0., 0.])), np.array(o_rev.vz(ts, obs=[8., 0., 0., 0., 0., 0.])), np.array([]), np.array([]), np.array([]), np.array([]))
     data_orbit_rev = data_orbit_rev.LamBet(normal, point) #...
 
     fig = plt.figure(figsize=(16, 4))
@@ -465,21 +494,91 @@ def optimize(data_opt):
     plt.ylabel('b', fontsize=20)
 
 
-    '''
-    fig.add_subplot(313)
+
+    plt.tight_layout()
+    plt.savefig('/home/thomas/Desktop/python/python_figures/lambdabeta.eps')
+
+    fig = plt.figure(figsize=(17, 17))
+    fig.add_subplot(221)
+
+    plt.scatter(data_opt.l, data_opt.b, s=100, c='b')
+    plt.scatter(data_orbit.l, data_orbit.b, s=25, c='r')
+    plt.scatter(data_orbit_rev.l, data_orbit_rev.b, s=25, c='g')
+    plt.xlim(0, 360)
+    plt.ylim(-90, 90)
+    plt.xlabel('l')
+    plt.ylabel('b')
+
+
+    fig.add_subplot(222)
 
     plt.scatter(data_opt.l, data_opt.d, s=100, c='b')
-    plt.plot([0,360], [0, 0], 'k') #shows great circle on plot for reference
     plt.scatter(data_orbit.l, data_orbit.d, s=25, c='r')
     plt.scatter(data_orbit_rev.l, data_orbit_rev.d, s=25, c='g')
     plt.xlim(0, 360)
     plt.ylim(0, 50)
     plt.xlabel('l')
     plt.ylabel('dist (helio)')
-    '''
-    plt.tight_layout()
-    plt.savefig('/home/thomas/Desktop/python/python_figures/lambdabeta.eps')
 
+
+    fig.add_subplot(223)
+
+    plt.scatter(data_opt.U, data_opt.V, s=100, c='b')
+    plt.scatter(data_orbit.U, data_orbit.V, s=25, c='r')
+    plt.scatter(data_orbit_rev.U*-1, data_orbit_rev.V*-1, s=25, c='g')
+    plt.xlim(-500, 500)
+    plt.ylim(-500, 500)
+    plt.xlabel('U')
+    plt.ylabel('V')
+
+
+    fig.add_subplot(224)
+
+    plt.scatter(data_opt.U, data_opt.W, s=100, c='b')
+    plt.scatter(data_orbit.U, data_orbit.W, s=25, c='r')
+    plt.scatter(data_orbit_rev.U*-1, data_orbit_rev.W*-1, s=25, c='g')
+    plt.xlim(-500, 500)
+    plt.ylim(-500, 500)
+    plt.xlabel('U')
+    plt.ylabel('W')
+
+
+    plt.tight_layout()
+
+    plt.savefig('/home/thomas/Desktop/python/python_figures/orbit_fit' + str(n_test) + '.eps')
+
+
+    c_data = SkyCoord(l=data_opt.l, b=data_opt.b, frame='galactic', unit='deg')
+    c_data_icrs = c_data.transform_to('icrs')
+    c_orbit = SkyCoord(l=data_orbit.l, b=data_orbit.b, frame='galactic', unit='deg')
+    c_orbit_icrs = c_orbit.transform_to('icrs')
+    c_orbit_rev = SkyCoord(l=data_orbit.l, b=data_orbit.b, frame='galactic', unit='deg')
+    c_orbit_rev_icrs = c_orbit_rev.transform_to('icrs')
+
+
+    fig = fig = plt.figure(figsize=(17, 8))
+    fig.add_subplot(211)
+
+    plt.scatter(c_data_icrs.ra.degree, c_data_icrs.dec.degree, s=100, c='b')
+    plt.scatter(c_orbit_icrs.ra.degree, c_orbit_icrs.dec.degree, s=25, c='r')
+    plt.scatter(c_orbit_rev_icrs.ra.degree, c_orbit_rev_icrs.dec.degree, s=25, c='g')
+    plt.xlim(360, 0)
+    plt.ylim(-90, 90)
+    plt.xlabel('ra')
+    plt.ylabel('dec')
+
+
+    fig.add_subplot(212)
+
+    plt.scatter(c_data_icrs.ra.degree, data_opt.d, s=100, c='b')
+    plt.scatter(c_orbit_icrs.ra.degree, data_orbit.d, s=25, c='r')
+    plt.scatter(c_orbit_rev_icrs.ra.degree, data_orbit_rev.d, s=25, c='g')
+    plt.xlim(360, 0)
+    plt.ylim(0, 50)
+    plt.xlabel('l')
+    plt.ylabel('dist (helio)')
+
+    plt.savefig('/home/thomas/Desktop/python/python_figures/orbit_fit_icrs' + str(n_test) + '.eps')
 
     #===============================================
 
